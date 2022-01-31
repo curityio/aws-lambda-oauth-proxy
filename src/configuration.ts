@@ -1,0 +1,120 @@
+/*
+ *  Copyright 2022 Curity AB
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+export default class Configuration {
+  private readonly _trustedOrigins: string[]
+  private readonly _trustedOriginsString: string
+  private readonly _cookieNamePrefix: string
+  private readonly _encryptionKey: string
+  private readonly _phantomToken: boolean
+  private readonly _introspectionURL: string
+  private readonly _clientID: string
+  private readonly _clientSecret: string
+  private readonly _allowMethods: string
+  private readonly _allowHeaders: string
+  private readonly _exposeHeaders: string
+  private readonly _corsMaxAge: number
+  private readonly _allowCors: boolean
+  private readonly _allowToken: boolean
+
+  constructor(
+      trustedOrigins: string,
+      cookieNamePrefix: string,
+      encryptionKey: string,
+      phantomToken: boolean,
+      introspectionURL: string,
+      clientID: string,
+      clientSecret: string,
+      allowMethods?: string,
+      allowHeaders?: string[],
+      exposeHeaders?: string[],
+      corsMaxAge?: number,
+      allowCors?: boolean,
+      allowToken?: boolean
+
+  ) {
+    this._trustedOriginsString = trustedOrigins
+    this._trustedOrigins = trustedOrigins.split(',')
+    this._cookieNamePrefix = cookieNamePrefix
+    this._encryptionKey = encryptionKey
+    this._phantomToken = phantomToken
+    this._introspectionURL = introspectionURL
+    this._clientID = clientID
+    this._clientSecret = clientSecret
+    this._allowMethods = allowMethods || "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+    this._allowHeaders = allowHeaders?.join("; ") || "x-" + cookieNamePrefix + "-csrf"
+    this._exposeHeaders = exposeHeaders?.join("; ") || ""
+    this._corsMaxAge = corsMaxAge || 86400
+    this._allowCors = allowCors || true
+    this._allowToken = allowToken || true
+  }
+
+  get trustedOrigins(): string[] {
+    return this._trustedOrigins
+  }
+
+  get trustedOriginsString(): string {
+    return this._trustedOriginsString
+  }
+
+  get cookieNamePrefix(): string {
+    return this._cookieNamePrefix
+  }
+
+  get encryptionKey(): string {
+    return this._encryptionKey
+  }
+
+  get phantomToken(): boolean {
+    return this._phantomToken
+  }
+
+  get introspectionURL(): string {
+    return this._introspectionURL
+  }
+
+  get clientID(): string {
+    return this._clientID
+  }
+
+  get clientSecret(): string {
+    return this._clientSecret
+  }
+
+  get allowMethods(): string {
+    return this._allowMethods;
+  }
+
+  get allowHeaders(): string {
+    return this._allowHeaders;
+  }
+
+  get exposeHeaders(): string {
+    return this._exposeHeaders;
+  }
+
+  get corsMaxAge(): number {
+    return this._corsMaxAge;
+  }
+
+  get allowCors(): boolean {
+    return this._allowCors;
+  }
+
+  get allowToken(): boolean {
+    return this._allowToken;
+  }
+}
