@@ -35,9 +35,9 @@ The easiest way to deploy the authorizer is with the use of the [serverless fram
    `OptionsDataMethod`. The path is set in the resource entry. The Options method entry shows how to configure CORS headers.
    The example `PostDataMethod` is configured to use the lambda authorizer. Make sure to copy the configuration for other methods
    and resources in your API, so that proper authorization and CORS response headers are set.
-3. Copy the `.env-template` file to a `.env` file and set the relevant configuration options. Entries that are commented out show the default values used
-   by the authorizer and Gateway.
-4. Run `serverless deploy` to deploy the API definition to AWS.
+3. Copy the `.env-template` file to a `.env` file and set the relevant configuration options. See the [Configuration section](#configuration)
+   to learn more about the available options.
+7. Run `serverless deploy` to deploy the API definition to AWS.
 
 ### Manually deploying
 
