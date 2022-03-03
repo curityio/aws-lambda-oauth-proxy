@@ -25,7 +25,6 @@ import {URL, URLSearchParams} from "url";
 import {RequestOptions} from "https";
 import TokenExpired from "./TokenExpired";
 import IntrospectionException from "./IntrospectionException";
-import getCorsHeaders from "./cors";
 
 export async function handleRequest(
   event: APIGatewayRequestAuthorizerEvent,
@@ -33,18 +32,17 @@ export async function handleRequest(
 ): Promise<AuthResponse> {
 
   const singleValueHeaders = event.headers || {}
-  const originFromHeader = singleValueHeaders['origin'] || ''
+  const originFromHeader = singleValueHeaders['origin'] || singleValueHeaders['Origin'] || ''
 
   if (config.allowToken) {
     // If there is already a bearer token, eg for mobile clients, return immediately
     // Note that the target API must always digitally verify the JWT access token
-    const authorizationHeader = singleValueHeaders['Authorization']
+    const authorizationHeader = singleValueHeaders['authorization'] || singleValueHeaders['Authorization']
 
     if (authorizationHeader && authorizationHeader.startsWith('Bearer ')) {
       const token = authorizationHeader.substring(7);
       const iamPolicy = generateIAMPolicy(token, event.methodArn)
       iamPolicy.context = {
-        ...getCorsHeaders(config, originFromHeader),
         "token": authorizationHeader,
       }
       return iamPolicy
@@ -61,7 +59,7 @@ export async function handleRequest(
     }
   }
 
-  const cookies = parse(singleValueHeaders['cookie'] || '')
+  const cookies = parse(singleValueHeaders['cookie'] || singleValueHeaders['Cookie'] || '')
   const dataChangingMethods = ['POST', 'PUT', 'DELETE', 'PATCH']
 
   // For data changing requests do double submit cookie verification in line with OWASP CSRF best practices
@@ -132,7 +130,9 @@ export async function handleRequest(
       accessToken = await exchangePhantomToken(accessToken, config)
     } catch (error: any) {
       if (error instanceof TokenExpired) {
-        return Promise.reject("Unauthorized") // This is to respond with a 401 to the client.
+        // Promise has to be rejected with the string "Unauthorized". This way the lambda authorizer returns a 401 to the client.
+        // Currently, there is no nicer way of returning a 401 from a lambda authorizer.
+        return Promise.reject("Unauthorized")
       }
       if (error instanceof IntrospectionException) {
         return generateDenyIAMPolicy('anonymous', event.methodArn)
@@ -142,7 +142,6 @@ export async function handleRequest(
 
     // Add the access token to context making it available to API GW to add to upstream Authorization header
     iamPolicy.context = {
-      ...getCorsHeaders(config, originFromHeader),
       "token": 'Bearer ' + accessToken
     };
 

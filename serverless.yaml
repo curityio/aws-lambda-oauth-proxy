@@ -1,0 +1,158 @@
+org: # The name of your serverless organization
+app: aws-lambda-oauth-proxy # Name of the application
+service: aws-lambda-oauth-proxy # Name of the connected service
+provider: aws
+useDotenv: true
+
+functions:
+  authorizer:
+    handler: src/index.handler
+
+resources:
+  Resources:
+    ApiGatewayRestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: gateway
+    DataResource:
+      Type: AWS::ApiGateway::Resource
+      Properties:
+        ParentId:
+          Fn::GetAtt:
+            - ApiGatewayRestApi
+            - RootResourceId
+        PathPart: data # the endpoint path in the API that is set as proxy
+        RestApiId:
+          Ref: ApiGatewayRestApi
+    PostDataMethod:
+      Type: AWS::ApiGateway::Method
+      Properties:
+        ResourceId:
+          Ref: DataResource
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        HttpMethod: POST # The HTTP method for the resource
+        RequestParameters:
+          method.request.header.Authorization: false
+        MethodResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Expose-Headers: false
+              method.response.header.Access-Control-Allow-Origin: true
+              method.response.header.Access-Control-Allow-Credentials: true
+              method.response.header.Vary: true
+          - StatusCode: 401
+            ResponseParameters:
+              method.response.header.Access-Control-Expose-Headers: false
+              method.response.header.Access-Control-Allow-Origin: true
+              method.response.header.Access-Control-Allow-Credentials: true
+              method.response.header.Vary: true
+          - StatusCode: 502
+            ResponseParameters:
+              method.response.header.Access-Control-Expose-Headers: false
+              method.response.header.Access-Control-Allow-Origin: true
+              method.response.header.Access-Control-Allow-Credentials: true
+              method.response.header.Vary: true
+        Integration:
+          IntegrationHttpMethod: POST
+          Type: HTTP
+          Uri: https://api.example.com/data # The URL to which the Gateway should proxy
+          RequestParameters:
+            integration.request.header.Authorization: "context.authorizer.token"
+          IntegrationResponses:
+            - StatusCode: 200
+              SelectionPattern: 200
+              ResponseParameters:
+                method.response.header.Access-Control-Expose-Headers: "'${env:EXPOSE_HEADERS, ''}'"
+                method.response.header.Access-Control-Allow-Origin: "'${env:TRUSTED_WEB_ORIGINS, '*'}'"
+                method.response.header.Access-Control-Allow-Credentials: "'true'"
+                method.response.header.Vary: "'origin'"
+            - StatusCode: 401
+              SelectionPattern: 401
+              ResponseParameters:
+                method.response.header.Access-Control-Expose-Headers: "'${env:EXPOSE_HEADERS, ''}'"
+                method.response.header.Access-Control-Allow-Origin: "'${env:TRUSTED_WEB_ORIGINS, '*'}'"
+                method.response.header.Access-Control-Allow-Credentials: "'true'"
+                method.response.header.Vary: "'origin'"
+            - StatusCode: 502
+              ResponseTemplates:
+                application/json: >-
+                  #set($context.responseOverride.status = 502)
+              ResponseParameters:
+                method.response.header.Access-Control-Expose-Headers: "'${env:EXPOSE_HEADERS, ''}'"
+                method.response.header.Access-Control-Allow-Origin: "'${env:TRUSTED_WEB_ORIGINS, '*'}'"
+                method.response.header.Access-Control-Allow-Credentials: "'true'"
+                method.response.header.Vary: "'origin'"
+        AuthorizerId:
+            Ref: Authorizer
+        AuthorizationType: CUSTOM
+    OptionsDataMethod:
+      Type: AWS::ApiGateway::Method
+      Properties:
+        ResourceId:
+          Ref: DataResource
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        HttpMethod: OPTIONS
+        RequestParameters:
+          method.request.header.Access-Control-Request-Headers: false
+        MethodResponses:
+          - StatusCode: 204
+            ResponseParameters:
+              method.response.header.Access-Control-Expose-Headers: false
+              method.response.header.Access-Control-Allow-Origin: true
+              method.response.header.Access-Control-Allow-Credentials: true
+              method.response.header.Access-Control-Max-Age: true
+              method.response.header.Access-Control-Allow-Headers: true
+              method.response.header.Access-Control-Allow-Methods: true
+              method.response.header.Vary: true
+        AuthorizationType: NONE
+        Integration:
+          IntegrationHttpMethod: OPTIONS
+          Type: MOCK
+          RequestTemplates:
+            application/json: >-
+              #set($context.requestOverride.header.Access-Control-Allow-Headers = "'${env:ALLOW_HEADERS, ''}'")
+              {"statusCode": 204}
+          IntegrationResponses:
+            - StatusCode: 204
+              ResponseParameters:
+                method.response.header.Access-Control-Allow-Headers: "''"
+                method.response.header.Access-Control-Allow-Methods: "'${env:ALLOW_METHODS, 'GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'}'"
+                method.response.header.Access-Control-Expose-Headers: "'${env:EXPOSE_HEADERS, ''}'"
+                method.response.header.Access-Control-Allow-Origin: "'${env:TRUSTED_WEB_ORIGINS}'"
+                method.response.header.Access-Control-Allow-Credentials: "'true'"
+                method.response.header.Access-Control-Max-Age: "'${env:CORS_MAX_AGE, 86400}'"
+                method.response.header.Vary: "'origin'"
+              ResponseTemplates:
+                application/json: >-
+                  #if($context.requestOverride.header.Access-Control-Allow-Headers != "")
+                  #set($context.responseOverride.header.Access-Control-Allow-Headers = $context.requestOverride.header.Access-Control-Allow-Headers)
+                  #set($context.responseOverride.header.Vary = "'origin,access-control-request-headers'")
+                  #else
+                  #set($context.responseOverride.header.Access-Control-Allow-Headers = $input.params("Access-Control-Request-Headers"))
+                  #end
+    Authorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        AuthorizerResultTtlInSeconds: 0
+        AuthorizerUri: !Join [ '', [ 'arn:aws:apigateway:', !Ref AWS::Region, ':lambda:path/2015-03-31/functions/', !GetAtt AuthorizerLambdaFunction.Arn, '/invocations' ] ]
+        IdentitySource: method.request.header.Cookie
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Type: REQUEST
+        Name: gateway-authorizer
+
+    AuthorizerPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !GetAtt AuthorizerLambdaFunction.Arn
+        Action: lambda:InvokeFunction
+        Principal: !Join ['',['apigateway.', !Ref AWS::URLSuffix]]
+
+plugins:
+  - serverless-plugin-typescript
+
+package:
+  patterns:
+    - ".env"

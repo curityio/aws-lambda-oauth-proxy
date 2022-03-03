@@ -23,11 +23,6 @@ export default class Configuration {
   private readonly _introspectionURL: string
   private readonly _clientID: string
   private readonly _clientSecret: string
-  private readonly _allowMethods: string
-  private readonly _allowHeaders: string
-  private readonly _exposeHeaders: string
-  private readonly _corsMaxAge: number
-  private readonly _allowCors: boolean
   private readonly _allowToken: boolean
 
   constructor(
@@ -38,11 +33,6 @@ export default class Configuration {
       introspectionURL: string,
       clientID: string,
       clientSecret: string,
-      allowMethods?: string,
-      allowHeaders?: string[],
-      exposeHeaders?: string[],
-      corsMaxAge?: number,
-      allowCors?: boolean,
       allowToken?: boolean
 
   ) {
@@ -54,11 +44,6 @@ export default class Configuration {
     this._introspectionURL = introspectionURL
     this._clientID = clientID
     this._clientSecret = clientSecret
-    this._allowMethods = allowMethods || "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
-    this._allowHeaders = allowHeaders?.join("; ") || "x-" + cookieNamePrefix + "-csrf"
-    this._exposeHeaders = exposeHeaders?.join("; ") || ""
-    this._corsMaxAge = corsMaxAge || 86400
-    this._allowCors = allowCors || true
     this._allowToken = allowToken || true
   }
 
@@ -92,26 +77,6 @@ export default class Configuration {
 
   get clientSecret(): string {
     return this._clientSecret
-  }
-
-  get allowMethods(): string {
-    return this._allowMethods;
-  }
-
-  get allowHeaders(): string {
-    return this._allowHeaders;
-  }
-
-  get exposeHeaders(): string {
-    return this._exposeHeaders;
-  }
-
-  get corsMaxAge(): number {
-    return this._corsMaxAge;
-  }
-
-  get allowCors(): boolean {
-    return this._allowCors;
   }
 
   get allowToken(): boolean {
